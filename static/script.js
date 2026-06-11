@@ -5,13 +5,26 @@ const submitBtn = form.querySelector("button");
 const addressInput = document.getElementById("address");
 const autocompleteList = document.getElementById("autocomplete-list");
 const themeToggle = document.getElementById("theme-toggle");
+const filterWrapper = document.getElementById("filter-wrapper");
+const keywordFilter = document.getElementById("keyword-filter");
+const mapEl = document.getElementById("map");
 
 const THEME_KEY = "garage-sale-theme";
+const ADDRESS_KEY = "garage-sale-address";
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 88 88'%3E%3Crect width='88' height='88' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%23999' font-family='sans-serif'%3ENo photo%3C/text%3E%3C/svg%3E";
 
 let autocompleteTimer = null;
 let activeSuggestionIndex = -1;
+let currentListings = [];
+let map = null;
+let userMarker = null;
+let listingMarkersLayer = null;
+
+const savedAddress = localStorage.getItem(ADDRESS_KEY);
+if (savedAddress) {
+    addressInput.value = savedAddress;
+}
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -19,8 +32,12 @@ form.addEventListener("submit", async (event) => {
     const address = addressInput.value.trim();
     if (!address) return;
 
+    localStorage.setItem(ADDRESS_KEY, address);
+
     clearAutocomplete();
     resultsEl.innerHTML = "";
+    filterWrapper.hidden = true;
+    keywordFilter.value = "";
     submitBtn.disabled = true;
     setStatus("Searching... the first search of the day can take up to a minute.");
 
@@ -33,7 +50,15 @@ form.addEventListener("submit", async (event) => {
             return;
         }
 
-        renderResults(data.listings);
+        currentListings = data.listings;
+        filterWrapper.hidden = !currentListings.length;
+        renderResults(currentListings);
+
+        if (data.user_location) {
+            mapEl.hidden = false;
+            ensureMap(data.user_location.lat, data.user_location.lon);
+            updateMapMarkers(currentListings);
+        }
     } catch (err) {
         setStatus("Couldn't reach the server. Please try again.", true);
     } finally {
@@ -88,10 +113,64 @@ resultsEl.addEventListener("click", (event) => {
     }
 });
 
+keywordFilter.addEventListener("input", () => {
+    const query = keywordFilter.value.trim().toLowerCase();
+
+    if (!query) {
+        renderResults(currentListings);
+        updateMapMarkers(currentListings);
+        return;
+    }
+
+    const filtered = currentListings.filter((listing) => {
+        const haystack = `${listing.title} ${listing.description} ${listing.location}`.toLowerCase();
+        return haystack.includes(query);
+    });
+
+    renderResults(filtered, currentListings.length);
+    updateMapMarkers(filtered);
+});
+
 themeToggle.addEventListener("click", () => {
     const isLight = document.documentElement.getAttribute("data-theme") === "light";
     applyTheme(isLight ? "dark" : "light");
 });
+
+function ensureMap(lat, lon) {
+    if (!map) {
+        map = L.map(mapEl).setView([lat, lon], 13);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+        listingMarkersLayer = L.layerGroup().addTo(map);
+    } else {
+        map.invalidateSize();
+        map.setView([lat, lon], 13);
+    }
+
+    if (userMarker) {
+        userMarker.setLatLng([lat, lon]);
+    } else {
+        userMarker = L.marker([lat, lon], {
+            icon: L.divIcon({ className: "user-location-marker", iconSize: [16, 16] }),
+        }).addTo(map).bindPopup("Your location");
+    }
+}
+
+function updateMapMarkers(listings) {
+    if (!listingMarkersLayer) return;
+
+    listingMarkersLayer.clearLayers();
+
+    listings.forEach((listing) => {
+        if (listing.lat === null || listing.lon === null) return;
+
+        L.marker([listing.lat, listing.lon])
+            .addTo(listingMarkersLayer)
+            .bindPopup(`<strong>${escapeHtml(listing.title)}</strong><br>${escapeHtml(listing.location || "")}`);
+    });
+}
 
 function applyTheme(theme) {
     if (theme === "light") {
@@ -152,13 +231,20 @@ function setStatus(message, isError = false) {
     statusEl.classList.toggle("error", isError);
 }
 
-function renderResults(listings) {
+function renderResults(listings, totalCount = null) {
     if (!listings.length) {
-        setStatus("No garage sales found for today. Check back later!");
+        setStatus(totalCount === null
+            ? "No garage sales found for today. Check back later!"
+            : "No garage sales match that filter.");
+        resultsEl.innerHTML = "";
         return;
     }
 
-    setStatus(`Found ${listings.length} garage sale${listings.length === 1 ? "" : "s"} today.`);
+    if (totalCount === null) {
+        setStatus(`Found ${listings.length} garage sale${listings.length === 1 ? "" : "s"} today.`);
+    } else {
+        setStatus(`Showing ${listings.length} of ${totalCount} garage sale${totalCount === 1 ? "" : "s"}.`);
+    }
 
     resultsEl.innerHTML = listings.map((listing) => {
         const distance = listing.distance_miles !== null

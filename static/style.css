@@ -105,6 +105,34 @@ main {
     color: var(--text);
 }
 
+.map-container {
+    height: 300px;
+    margin: 0.75rem 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.user-location-marker {
+    background: #1565c0;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+.filter-wrapper {
+    margin: 0.75rem 0;
+}
+
+.filter-wrapper input {
+    padding: 0.6rem;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 100%;
+    background: var(--card-bg);
+    color: var(--text);
+}
+
 .address-wrapper {
     position: relative;
 }

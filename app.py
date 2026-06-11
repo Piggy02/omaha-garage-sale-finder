@@ -88,13 +88,19 @@ def api_listings():
             "description": listing["description"],
             "image_url": listing["image_url"],
             "source": listing["source"],
+            "lat": listing["lat"],
+            "lon": listing["lon"],
             "distance_miles": round(distance, 1) if distance is not None else None,
             "maps_url": maps_url,
         })
 
     results.sort(key=lambda r: (r["distance_miles"] is None, r["distance_miles"] or 0))
 
-    return jsonify({"count": len(results), "listings": results})
+    return jsonify({
+        "count": len(results),
+        "listings": results,
+        "user_location": {"lat": user_lat, "lon": user_lon},
+    })
 
 
 @app.route("/api/autocomplete")
