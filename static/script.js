@@ -4,6 +4,9 @@ const resultsEl = document.getElementById("results");
 const submitBtn = form.querySelector("button");
 const addressInput = document.getElementById("address");
 const autocompleteList = document.getElementById("autocomplete-list");
+const themeToggle = document.getElementById("theme-toggle");
+
+const THEME_KEY = "garage-sale-theme";
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 88 88'%3E%3Crect width='88' height='88' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%23999' font-family='sans-serif'%3ENo photo%3C/text%3E%3C/svg%3E";
 
@@ -84,6 +87,20 @@ resultsEl.addEventListener("click", (event) => {
         event.target.textContent = expanded ? "Show less" : "Show more";
     }
 });
+
+themeToggle.addEventListener("click", () => {
+    const isLight = document.documentElement.getAttribute("data-theme") === "light";
+    applyTheme(isLight ? "dark" : "light");
+});
+
+function applyTheme(theme) {
+    if (theme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+    } else {
+        document.documentElement.removeAttribute("data-theme");
+    }
+    localStorage.setItem(THEME_KEY, theme);
+}
 
 async function fetchSuggestions(query) {
     try {

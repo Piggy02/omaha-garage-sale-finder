@@ -5,9 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Omaha Garage Sale Finder</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        (function () {
+            var savedTheme = localStorage.getItem("garage-sale-theme");
+            if (savedTheme === "light") {
+                document.documentElement.setAttribute("data-theme", "light");
+            }
+        })();
+    </script>
 </head>
 <body>
     <header>
+        <div class="header-bar">
+            <button type="button" id="theme-toggle" class="theme-toggle">Change Theme</button>
+        </div>
         <h1>Omaha Garage Sale Finder</h1>
         <p class="subtitle">Today's garage &amp; moving sales near you, sorted by distance.</p>
     </header>
