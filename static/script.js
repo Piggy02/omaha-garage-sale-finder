@@ -173,6 +173,10 @@ function renderResults(listings) {
             ? `<a class="directions-link" href="${listing.maps_url}" target="_blank" rel="noopener">Directions</a>`
             : "";
 
+        const source = listing.source
+            ? `<span class="listing-source">Source: ${escapeHtml(listing.source)}</span>`
+            : "";
+
         const description = listing.description
             ? `
                 <p class="listing-description">${escapeHtml(listing.description)}</p>
@@ -191,7 +195,10 @@ function renderResults(listings) {
                     <p class="listing-meta">Sale date(s): ${escapeHtml(dates)}</p>
                     <p class="listing-meta">${distance}</p>
                     ${description}
-                    ${directions}
+                    <div class="listing-footer">
+                        ${source}
+                        ${directions}
+                    </div>
                 </div>
             </li>
         `;

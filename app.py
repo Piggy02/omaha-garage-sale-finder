@@ -78,6 +78,7 @@ def api_listings():
             "posted": listing["posted"],
             "description": listing["description"],
             "image_url": listing["image_url"],
+            "source": listing["source"],
             "distance_miles": round(distance, 1) if distance is not None else None,
             "maps_url": maps_url,
         })

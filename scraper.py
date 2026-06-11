@@ -281,6 +281,7 @@ def scrape_todays_listings():
             "posted": detail["posted"].isoformat() if detail["posted"] else None,
             "description": detail["body_text"],
             "image_url": detail["image_url"],
+            "source": "Craigslist",
             "lat": lat,
             "lon": lon,
         })
