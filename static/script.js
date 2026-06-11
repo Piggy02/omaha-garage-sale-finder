@@ -223,8 +223,18 @@ function updateMapMarkers(listings) {
 
         L.marker([listing.lat, listing.lon])
             .addTo(listingMarkersLayer)
-            .bindPopup(`<strong>${escapeHtml(listing.title)}</strong><br>${escapeHtml(listing.location || "")}`);
+            .bindPopup(`<strong>${escapeHtml(listing.title)}</strong><br>${escapeHtml(listing.location || "")}`)
+            .on("click", () => scrollToListing(listing.id));
     });
+}
+
+function scrollToListing(id) {
+    const card = resultsEl.querySelector(`[data-listing-id="${CSS.escape(String(id))}"]`);
+    if (!card) return;
+
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("highlighted");
+    setTimeout(() => card.classList.remove("highlighted"), 1500);
 }
 
 function applyTheme(theme) {
@@ -328,7 +338,7 @@ function renderResults(listings, totalCount = null) {
         const imageUrl = listing.image_url || PLACEHOLDER_IMAGE;
 
         return `
-            <li class="listing-card">
+            <li class="listing-card" data-listing-id="${escapeHtml(String(listing.id))}">
                 <img class="listing-thumb" src="${imageUrl}" alt="" loading="lazy" onerror="this.src='${PLACEHOLDER_IMAGE}'">
                 <div class="listing-content">
                     <p class="listing-title"><a href="${listing.url}" target="_blank" rel="noopener">${escapeHtml(listing.title)}</a></p>

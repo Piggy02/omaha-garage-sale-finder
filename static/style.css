@@ -314,6 +314,12 @@ main {
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1rem;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.listing-card.highlighted {
+    background: var(--hover-bg);
+    box-shadow: 0 0 0 2px var(--accent);
 }
 
 .listing-thumb {
