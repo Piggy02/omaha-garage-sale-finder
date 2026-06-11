@@ -64,10 +64,6 @@ dayOptions.forEach((button) => {
         dayOptions.forEach((b) => b.classList.remove("active"));
         button.classList.add("active");
         selectedDay = button.dataset.day;
-
-        if (addressInput.value.trim()) {
-            performSearch();
-        }
     });
 });
 
