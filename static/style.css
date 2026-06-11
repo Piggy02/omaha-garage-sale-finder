@@ -194,8 +194,8 @@ main {
     font-weight: 600;
     border: 1px solid var(--border);
     border-radius: 6px;
-    background: var(--card-bg);
-    color: var(--text);
+    background: var(--hover-bg);
+    color: var(--muted);
     cursor: pointer;
 }
 
