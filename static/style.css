@@ -221,8 +221,10 @@ main {
 }
 
 .directions-link {
-    display: inline-block;
+    display: block;
+    width: fit-content;
     margin-top: 0.6rem;
+    margin-left: auto;
     padding: 0.45rem 0.9rem;
     font-size: 0.9rem;
     font-weight: 600;
