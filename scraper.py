@@ -10,6 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from geocoding import geocode
+from utils import haversine_miles
 
 BASE_URL = "https://omaha.craigslist.org"
 SEARCH_URL = f"{BASE_URL}/search/gms"
@@ -193,6 +194,45 @@ def _normalize_text(text):
     return re.sub(r"\s+", " ", (text or "").lower()).strip()
 
 
+ADDRESS_NOISE_RE = re.compile(
+    r"\b(omaha|bellevue|papillion|la vista|ralston|elkhorn|gretna|council bluffs|"
+    r"nebraska|iowa|ne|ia|usa|united states|\d{5})\b"
+)
+ADDRESS_PUNCT_RE = re.compile(r"[^\w\s]")
+
+ADDRESS_ABBREVIATIONS = {
+    "street": "st", "avenue": "ave", "drive": "dr", "road": "rd", "court": "ct",
+    "lane": "ln", "place": "pl", "boulevard": "blvd", "circle": "cir",
+    "terrace": "ter", "parkway": "pkwy", "highway": "hwy", "trail": "trl",
+    "north": "n", "south": "s", "east": "e", "west": "w",
+}
+
+SAME_ADDRESS_DISTANCE_MILES = 0.05  # ~80 meters
+ADDRESS_TEXT_SIMILARITY = 0.85
+
+
+def _normalize_address(location):
+    text = ADDRESS_PUNCT_RE.sub(" ", _normalize_text(location))
+    text = ADDRESS_NOISE_RE.sub(" ", text)
+    words = [ADDRESS_ABBREVIATIONS.get(word, word) for word in text.split()]
+    return " ".join(words)
+
+
+def _same_location(a, b):
+    """Two listings are at the "same place" if their coordinates are very
+    close, or (when coordinates are missing) their addresses match closely
+    once city/state/zip noise is stripped out."""
+    if a["lat"] is not None and a["lon"] is not None and b["lat"] is not None and b["lon"] is not None:
+        return haversine_miles(a["lat"], a["lon"], b["lat"], b["lon"]) <= SAME_ADDRESS_DISTANCE_MILES
+
+    addr_a = _normalize_address(a["location"])
+    addr_b = _normalize_address(b["location"])
+    if not addr_a or not addr_b:
+        return False
+
+    return SequenceMatcher(None, addr_a, addr_b).ratio() >= ADDRESS_TEXT_SIMILARITY
+
+
 def _listing_score(listing):
     """Higher is "better" when choosing which copy of a repost to keep."""
     return (
@@ -204,11 +244,14 @@ def _listing_score(listing):
 
 
 def deduplicate_listings(listings):
-    """Collapse reposts of the same sale (same ad, new post ID) into one entry.
+    """Collapse reposts/cross-posts of the same sale into one entry.
 
-    Sellers often repost an identical or near-identical ad to bump it back to
-    the top of the search results, so we compare normalized title/description
-    similarity rather than relying on post IDs or location.
+    The same sale is often posted more than once (a reposted Craigslist ad,
+    or the same sale listed on both Craigslist and another site), usually
+    with reworded titles/descriptions. A sale only happens at one address per
+    day, so a matching address (or near-identical coordinates) is treated as
+    a strong signal on its own. Title/description similarity is kept as a
+    fallback for listings whose location couldn't be matched.
     """
     deduped = []
     signatures = []
@@ -218,7 +261,13 @@ def deduplicate_listings(listings):
         description = _normalize_text(listing["description"])
 
         match_index = None
-        for i, (other_title, other_description) in enumerate(signatures):
+        for i, other in enumerate(deduped):
+            if _same_location(listing, other):
+                match_index = i
+                break
+
+            other_title = signatures[i][0]
+            other_description = signatures[i][1]
             title_sim = SequenceMatcher(None, title, other_title).ratio()
             if description and other_description:
                 description_sim = SequenceMatcher(None, description, other_description).ratio()
