@@ -3,6 +3,7 @@
 import re
 import time
 from datetime import datetime
+from difflib import SequenceMatcher
 from zoneinfo import ZoneInfo
 
 import requests
@@ -187,6 +188,59 @@ def is_today(detail, today_date, from_structured_search):
     return bool(detail["posted"] and detail["posted"].date() == today_date)
 
 
+def _normalize_text(text):
+    return re.sub(r"\s+", " ", (text or "").lower()).strip()
+
+
+def _listing_score(listing):
+    """Higher is "better" when choosing which copy of a repost to keep."""
+    return (
+        bool(listing["sale_dates"]),
+        bool(listing["image_url"]),
+        listing["posted"] or "",
+        len(listing["description"] or ""),
+    )
+
+
+def deduplicate_listings(listings):
+    """Collapse reposts of the same sale (same ad, new post ID) into one entry.
+
+    Sellers often repost an identical or near-identical ad to bump it back to
+    the top of the search results, so we compare normalized title/description
+    similarity rather than relying on post IDs or location.
+    """
+    deduped = []
+    signatures = []
+
+    for listing in listings:
+        title = _normalize_text(listing["title"])
+        description = _normalize_text(listing["description"])
+
+        match_index = None
+        for i, (other_title, other_description) in enumerate(signatures):
+            title_sim = SequenceMatcher(None, title, other_title).ratio()
+            if description and other_description:
+                description_sim = SequenceMatcher(None, description, other_description).ratio()
+                is_match = title_sim >= 0.5 and description_sim >= 0.75
+            else:
+                # No description to cross-check, so require the titles to be
+                # near-identical to avoid merging unrelated generic posts
+                # (e.g. two different sales both titled "Garage Sale").
+                is_match = title_sim >= 0.95
+            if is_match:
+                match_index = i
+                break
+
+        if match_index is None:
+            signatures.append((title, description))
+            deduped.append(listing)
+        elif _listing_score(listing) > _listing_score(deduped[match_index]):
+            signatures[match_index] = (title, description)
+            deduped[match_index] = listing
+
+    return deduped
+
+
 def scrape_todays_listings():
     """Scrape, filter to today, and geocode listings missing coordinates.
 
@@ -231,4 +285,4 @@ def scrape_todays_listings():
             "lon": lon,
         })
 
-    return results
+    return deduplicate_listings(results)
