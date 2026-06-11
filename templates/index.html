@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Omaha Garage Sale Finder</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}">
     <script src="{{ url_for('static', filename='leaflet/leaflet.js') }}"></script>
     <script>
@@ -69,6 +69,6 @@
         <ul id="results"></ul>
     </main>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v={{ version }}"></script>
 </body>
 </html>

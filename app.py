@@ -13,7 +13,7 @@ from utils import haversine_miles, maps_directions_url
 
 app = Flask(__name__)
 
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 
 CACHE_TTL_SECONDS = 20 * 60
 
