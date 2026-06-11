@@ -8,10 +8,15 @@ const themeToggle = document.getElementById("theme-toggle");
 const filterWrapper = document.getElementById("filter-wrapper");
 const keywordFilter = document.getElementById("keyword-filter");
 const mapEl = document.getElementById("map");
+const mapSection = document.getElementById("map-section");
+const mapToggle = document.getElementById("map-toggle");
 const dayOptions = document.querySelectorAll(".day-option");
 
 const THEME_KEY = "garage-sale-theme";
 const ADDRESS_KEY = "garage-sale-address";
+const MAP_COLLAPSED_KEY = "garage-sale-map-collapsed";
+
+const OMAHA_CENTER = [41.2565, -95.9345];
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 88 88'%3E%3Crect width='88' height='88' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%23999' font-family='sans-serif'%3ENo photo%3C/text%3E%3C/svg%3E";
 
@@ -22,11 +27,30 @@ let selectedDay = "today";
 let map = null;
 let userMarker = null;
 let listingMarkersLayer = null;
+let pendingUserLocation = null;
 
 const savedAddress = localStorage.getItem(ADDRESS_KEY);
 if (savedAddress) {
     addressInput.value = savedAddress;
 }
+
+if (localStorage.getItem(MAP_COLLAPSED_KEY) === "1") {
+    mapSection.classList.add("collapsed");
+    mapToggle.textContent = "Show map";
+} else {
+    ensureMap();
+}
+
+mapToggle.addEventListener("click", () => {
+    const collapsed = mapSection.classList.toggle("collapsed");
+    mapToggle.textContent = collapsed ? "Show map" : "Hide map";
+    localStorage.setItem(MAP_COLLAPSED_KEY, collapsed ? "1" : "0");
+
+    if (!collapsed) {
+        ensureMap();
+        requestAnimationFrame(() => map.invalidateSize());
+    }
+});
 
 form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -72,11 +96,10 @@ async function performSearch() {
         currentListings = data.listings;
         filterWrapper.hidden = !currentListings.length;
         renderResults(currentListings);
+        updateMapMarkers(currentListings);
 
         if (data.user_location) {
-            mapEl.hidden = false;
-            ensureMap(data.user_location.lat, data.user_location.lon);
-            updateMapMarkers(currentListings);
+            setUserLocation(data.user_location.lat, data.user_location.lon);
         }
     } catch (err) {
         setStatus("Couldn't reach the server. Please try again.", true);
@@ -159,18 +182,27 @@ themeToggle.addEventListener("click", () => {
     applyTheme(isLight ? "dark" : "light");
 });
 
-function ensureMap(lat, lon) {
-    if (!map) {
-        map = L.map(mapEl).setView([lat, lon], 13);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
-        listingMarkersLayer = L.layerGroup().addTo(map);
-    } else {
-        map.invalidateSize();
-        map.setView([lat, lon], 13);
+function ensureMap() {
+    if (map) return;
+
+    map = L.map(mapEl).setView(OMAHA_CENTER, 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+    listingMarkersLayer = L.layerGroup().addTo(map);
+
+    if (pendingUserLocation) {
+        setUserLocation(pendingUserLocation.lat, pendingUserLocation.lon);
     }
+    updateMapMarkers(currentListings);
+}
+
+function setUserLocation(lat, lon) {
+    pendingUserLocation = { lat, lon };
+    if (!map) return;
+
+    map.setView([lat, lon], 13);
 
     if (userMarker) {
         userMarker.setLatLng([lat, lon]);
