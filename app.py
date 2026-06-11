@@ -3,10 +3,12 @@
 import threading
 from datetime import datetime
 
+import requests
 from flask import Flask, jsonify, render_template, request
 
+import treasuremap
 from geocoding import geocode, search_suggestions
-from scraper import TIMEZONE, scrape_todays_listings
+from scraper import TIMEZONE, deduplicate_listings, scrape_todays_listings
 from utils import haversine_miles, maps_directions_url
 
 app = Flask(__name__)
@@ -30,7 +32,14 @@ def get_todays_listings():
         if is_fresh:
             return _cache["listings"]
 
-        listings = scrape_todays_listings()
+        listings = []
+        for scrape in (scrape_todays_listings, treasuremap.scrape_todays_listings):
+            try:
+                listings.extend(scrape())
+            except requests.RequestException:
+                continue
+
+        listings = deduplicate_listings(listings)
         _cache["date"] = today
         _cache["fetched_at"] = datetime.now(TIMEZONE)
         _cache["listings"] = listings

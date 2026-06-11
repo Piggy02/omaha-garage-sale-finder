@@ -286,4 +286,4 @@ def scrape_todays_listings():
             "lon": lon,
         })
 
-    return deduplicate_listings(results)
+    return results
