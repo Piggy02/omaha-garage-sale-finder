@@ -10,7 +10,8 @@ const keywordFilter = document.getElementById("keyword-filter");
 const mapEl = document.getElementById("map");
 const mapSection = document.getElementById("map-section");
 const mapToggle = document.getElementById("map-toggle");
-const dayOptions = document.querySelectorAll(".day-option");
+const dayToggleSwitch = document.getElementById("day-toggle-switch");
+const dayToggleLabels = document.querySelectorAll(".day-toggle-label");
 
 const THEME_KEY = "garage-sale-theme";
 const ADDRESS_KEY = "garage-sale-address";
@@ -57,15 +58,18 @@ form.addEventListener("submit", (event) => {
     performSearch();
 });
 
-dayOptions.forEach((button) => {
-    button.addEventListener("click", () => {
-        if (button.classList.contains("active")) return;
-
-        dayOptions.forEach((b) => b.classList.remove("active"));
-        button.classList.add("active");
-        selectedDay = button.dataset.day;
-    });
+dayToggleSwitch.addEventListener("click", () => {
+    selectedDay = selectedDay === "today" ? "tomorrow" : "today";
+    updateDayToggle();
 });
+
+function updateDayToggle() {
+    const isTomorrow = selectedDay === "tomorrow";
+    dayToggleSwitch.setAttribute("aria-checked", String(isTomorrow));
+    dayToggleLabels.forEach((label) => {
+        label.classList.toggle("active", label.dataset.day === selectedDay);
+    });
+}
 
 async function performSearch() {
     const address = addressInput.value.trim();
