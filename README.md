@@ -23,15 +23,3 @@ python app.py
 ```
 
 Then open http://localhost:5000 and enter an address.
-
-## Deploy to Render (free tier)
-
-1. Push this folder to a GitHub repo.
-2. In Render, create a new **Web Service** from that repo.
-3. Build command: `pip install -r requirements.txt`
-4. Start command: leave blank (Render will use the `Procfile`), or set
-   `gunicorn app:app --timeout 120`.
-5. Deploy. Share the resulting `*.onrender.com` URL with friends.
-
-Note: Render's free tier spins down when idle, so the first request after a period
-of inactivity will be slow (cold start + first scrape of the day).
