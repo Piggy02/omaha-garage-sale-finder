@@ -71,10 +71,10 @@ def _parse_search_results(html):
     return listings
 
 
-def get_candidate_listings(today_iso, session):
+def get_candidate_listings(target_iso, session):
     """Return candidate listings: structured sale_date matches plus a bounded
     number of other recent listings to check via text/posted-date heuristics."""
-    structured_html = _get(session, SEARCH_URL, {**SEARCH_PARAMS, "sale_date": today_iso})
+    structured_html = _get(session, SEARCH_URL, {**SEARCH_PARAMS, "sale_date": target_iso})
     structured = _parse_search_results(structured_html)
     structured_ids = {listing["id"] for listing in structured}
     for listing in structured:
@@ -167,15 +167,16 @@ def _extract_dates(text):
             yield month, int(day)
 
 
-def is_today(detail, today_date, from_structured_search):
-    """Decide whether a listing's sale is happening today.
+def matches_date(detail, target_date, from_structured_search):
+    """Decide whether a listing's sale is happening on the target date.
 
     Prefers Craigslist's structured sale-date tags. If a posting has none, falls
-    back to scanning the title/body for a date matching today, and finally to
-    "posted today with no other date mentioned" for last-minute posts.
+    back to scanning the title/body for a date matching the target date, and
+    finally to "posted today with no other date mentioned" for last-minute
+    posts (which only ever matches when target_date is today).
     """
     if detail["sale_dates"]:
-        return today_date.isoformat() in detail["sale_dates"]
+        return target_date.isoformat() in detail["sale_dates"]
 
     if from_structured_search:
         return True
@@ -183,9 +184,9 @@ def is_today(detail, today_date, from_structured_search):
     text = f"{detail['title']} {detail['body_text']}"
     found_dates = list(_extract_dates(text))
     if found_dates:
-        return (today_date.month, today_date.day) in found_dates
+        return (target_date.month, target_date.day) in found_dates
 
-    return bool(detail["posted"] and detail["posted"].date() == today_date)
+    return bool(detail["posted"] and detail["posted"].date() == target_date)
 
 
 def _normalize_text(text):
@@ -241,18 +242,16 @@ def deduplicate_listings(listings):
     return deduped
 
 
-def scrape_todays_listings():
-    """Scrape, filter to today, and geocode listings missing coordinates.
+def scrape_listings(target_date):
+    """Scrape, filter to target_date, and geocode listings missing coordinates.
 
     Returns a list of dicts: id, title, url, location, sale_dates, posted,
-    description, image_url, lat, lon.
+    description, image_url, source, lat, lon.
     """
-    today = datetime.now(TIMEZONE).date()
-
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
 
-    candidates = get_candidate_listings(today.isoformat(), session)
+    candidates = get_candidate_listings(target_date.isoformat(), session)
 
     results = []
     for candidate in candidates:
@@ -262,7 +261,7 @@ def scrape_todays_listings():
         except requests.RequestException:
             continue
 
-        if not is_today(detail, today, candidate["from_structured_search"]):
+        if not matches_date(detail, target_date, candidate["from_structured_search"]):
             continue
 
         lat, lon = detail["lat"], detail["lon"]

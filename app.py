@@ -1,14 +1,14 @@
 """Flask app: serves the garage sale finder UI and the listings API."""
 
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 from flask import Flask, jsonify, render_template, request
 
 import treasuremap
 from geocoding import geocode, search_suggestions
-from scraper import TIMEZONE, deduplicate_listings, scrape_todays_listings
+from scraper import TIMEZONE, deduplicate_listings, scrape_listings
 from utils import haversine_miles, maps_directions_url
 
 app = Flask(__name__)
@@ -16,33 +16,42 @@ app = Flask(__name__)
 CACHE_TTL_SECONDS = 20 * 60
 
 _cache_lock = threading.Lock()
-_cache = {"date": None, "fetched_at": None, "listings": []}
+_cache = {
+    "today": {"date": None, "fetched_at": None, "listings": []},
+    "tomorrow": {"date": None, "fetched_at": None, "listings": []},
+}
 
 
-def get_todays_listings():
+def _target_date(day):
     today = datetime.now(TIMEZONE).date()
+    return today if day == "today" else today + timedelta(days=1)
+
+
+def get_listings_for_day(day):
+    target_date = _target_date(day)
 
     with _cache_lock:
         now = datetime.now(TIMEZONE)
+        entry = _cache[day]
         is_fresh = (
-            _cache["date"] == today
-            and _cache["fetched_at"] is not None
-            and (now - _cache["fetched_at"]).total_seconds() < CACHE_TTL_SECONDS
+            entry["date"] == target_date
+            and entry["fetched_at"] is not None
+            and (now - entry["fetched_at"]).total_seconds() < CACHE_TTL_SECONDS
         )
         if is_fresh:
-            return _cache["listings"]
+            return entry["listings"]
 
         listings = []
-        for scrape in (scrape_todays_listings, treasuremap.scrape_todays_listings):
+        for scrape in (scrape_listings, treasuremap.scrape_listings):
             try:
-                listings.extend(scrape())
+                listings.extend(scrape(target_date))
             except requests.RequestException:
                 continue
 
         listings = deduplicate_listings(listings)
-        _cache["date"] = today
-        _cache["fetched_at"] = datetime.now(TIMEZONE)
-        _cache["listings"] = listings
+        entry["date"] = target_date
+        entry["fetched_at"] = datetime.now(TIMEZONE)
+        entry["listings"] = listings
         return listings
 
 
@@ -57,6 +66,10 @@ def api_listings():
     if not address:
         return jsonify({"error": "Please enter an address."}), 400
 
+    day = request.args.get("day", "today")
+    if day not in ("today", "tomorrow"):
+        return jsonify({"error": "Invalid day."}), 400
+
     user_location = geocode(address) or geocode(f"{address}, Omaha, NE")
     if not user_location:
         return jsonify({
@@ -64,7 +77,7 @@ def api_listings():
         }), 400
 
     user_lat, user_lon = user_location
-    listings = get_todays_listings()
+    listings = get_listings_for_day(day)
 
     results = []
     for listing in listings:
@@ -100,6 +113,7 @@ def api_listings():
         "count": len(results),
         "listings": results,
         "user_location": {"lat": user_lat, "lon": user_lon},
+        "day": day,
     })
 
 

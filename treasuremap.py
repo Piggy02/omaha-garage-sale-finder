@@ -45,13 +45,11 @@ def _sale_id(url):
     return f"ystm-{match.group(1)}" if match else f"ystm-{abs(hash(url))}"
 
 
-def scrape_todays_listings():
-    """Scrape Yard Sale Treasure Map and return today's Omaha-area sales.
+def scrape_listings(target_date):
+    """Scrape Yard Sale Treasure Map and return Omaha-area sales for target_date.
 
     Returns a list of dicts matching the schema used by scraper.py.
     """
-    today = datetime.now(TIMEZONE).date()
-
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
 
@@ -62,7 +60,7 @@ def scrape_todays_listings():
     results = []
     for sale in sales:
         sale_date = datetime.fromtimestamp(sale["date"], tz=TIMEZONE).date()
-        if sale_date != today:
+        if sale_date != target_date:
             continue
 
         location = sale["address"].strip()
@@ -74,7 +72,7 @@ def scrape_todays_listings():
             "title": sale["title"].strip() or "Garage Sale",
             "url": sale["url"],
             "location": location,
-            "sale_dates": [today.isoformat()],
+            "sale_dates": [target_date.isoformat()],
             "posted": None,
             "description": sale["description"].strip(),
             "image_url": _image_url(sale.get("media")),

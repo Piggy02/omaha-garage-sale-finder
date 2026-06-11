@@ -48,7 +48,11 @@
                 >
                 <ul id="autocomplete-list" class="autocomplete-items"></ul>
             </div>
-            <button type="submit">Find Today's Garage Sales</button>
+            <div class="day-toggle" role="group" aria-label="Choose day">
+                <button type="button" class="day-option active" data-day="today">Today</button>
+                <button type="button" class="day-option" data-day="tomorrow">Tomorrow</button>
+            </div>
+            <button type="submit">Find Garage Sales</button>
         </form>
 
         <div id="status"></div>

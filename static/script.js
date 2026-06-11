@@ -8,6 +8,7 @@ const themeToggle = document.getElementById("theme-toggle");
 const filterWrapper = document.getElementById("filter-wrapper");
 const keywordFilter = document.getElementById("keyword-filter");
 const mapEl = document.getElementById("map");
+const dayOptions = document.querySelectorAll(".day-option");
 
 const THEME_KEY = "garage-sale-theme";
 const ADDRESS_KEY = "garage-sale-address";
@@ -17,6 +18,7 @@ const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/20
 let autocompleteTimer = null;
 let activeSuggestionIndex = -1;
 let currentListings = [];
+let selectedDay = "today";
 let map = null;
 let userMarker = null;
 let listingMarkersLayer = null;
@@ -26,9 +28,26 @@ if (savedAddress) {
     addressInput.value = savedAddress;
 }
 
-form.addEventListener("submit", async (event) => {
+form.addEventListener("submit", (event) => {
     event.preventDefault();
+    performSearch();
+});
 
+dayOptions.forEach((button) => {
+    button.addEventListener("click", () => {
+        if (button.classList.contains("active")) return;
+
+        dayOptions.forEach((b) => b.classList.remove("active"));
+        button.classList.add("active");
+        selectedDay = button.dataset.day;
+
+        if (addressInput.value.trim()) {
+            performSearch();
+        }
+    });
+});
+
+async function performSearch() {
     const address = addressInput.value.trim();
     if (!address) return;
 
@@ -39,10 +58,10 @@ form.addEventListener("submit", async (event) => {
     filterWrapper.hidden = true;
     keywordFilter.value = "";
     submitBtn.disabled = true;
-    setStatus("Searching... the first search of the day can take up to a minute.");
+    setStatus(`Searching... the first search for ${dayLabel()} can take up to a minute.`);
 
     try {
-        const response = await fetch(`/api/listings?address=${encodeURIComponent(address)}`);
+        const response = await fetch(`/api/listings?address=${encodeURIComponent(address)}&day=${selectedDay}`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -64,7 +83,11 @@ form.addEventListener("submit", async (event) => {
     } finally {
         submitBtn.disabled = false;
     }
-});
+}
+
+function dayLabel() {
+    return selectedDay === "tomorrow" ? "tomorrow" : "today";
+}
 
 addressInput.addEventListener("input", () => {
     const query = addressInput.value.trim();
@@ -234,14 +257,14 @@ function setStatus(message, isError = false) {
 function renderResults(listings, totalCount = null) {
     if (!listings.length) {
         setStatus(totalCount === null
-            ? "No garage sales found for today. Check back later!"
+            ? `No garage sales found for ${dayLabel()}. Check back later!`
             : "No garage sales match that filter.");
         resultsEl.innerHTML = "";
         return;
     }
 
     if (totalCount === null) {
-        setStatus(`Found ${listings.length} garage sale${listings.length === 1 ? "" : "s"} today.`);
+        setStatus(`Found ${listings.length} garage sale${listings.length === 1 ? "" : "s"} for ${dayLabel()}.`);
     } else {
         setStatus(`Showing ${listings.length} of ${totalCount} garage sale${totalCount === 1 ? "" : "s"}.`);
     }
