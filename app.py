@@ -13,6 +13,8 @@ from utils import haversine_miles, maps_directions_url
 
 app = Flask(__name__)
 
+APP_VERSION = "1.0.0"
+
 CACHE_TTL_SECONDS = 20 * 60
 
 _cache_lock = threading.Lock()
@@ -57,7 +59,7 @@ def get_listings_for_day(day):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=APP_VERSION)
 
 
 @app.route("/api/listings")

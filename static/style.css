@@ -43,8 +43,15 @@ header {
 
 .header-bar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 0.25rem;
+}
+
+.version-tag {
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0.75;
 }
 
 .theme-toggle {
