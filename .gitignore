@@ -5,3 +5,4 @@ venv/
 geocode_cache.json
 .env
 .claude/
+CLAUDE.md
