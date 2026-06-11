@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Omaha Garage Sale Finder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Omaha Garage Sale Finder</h1>
+        <p class="subtitle">Today's garage &amp; moving sales near you, sorted by distance.</p>
+    </header>
+
+    <main>
+        <form id="search-form">
+            <label for="address">Your address</label>
+            <div class="address-wrapper">
+                <input
+                    type="text"
+                    id="address"
+                    name="address"
+                    placeholder="e.g. 123 Main St, Omaha, NE"
+                    autocomplete="off"
+                    required
+                >
+                <ul id="autocomplete-list" class="autocomplete-items"></ul>
+            </div>
+            <button type="submit">Find Today's Garage Sales</button>
+        </form>
+
+        <div id="status"></div>
+        <ul id="results"></ul>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
